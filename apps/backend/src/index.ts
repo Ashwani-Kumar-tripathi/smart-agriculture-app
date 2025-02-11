@@ -1,24 +1,52 @@
-import express from "express";
+import cookieParser from "cookie-parser";
+import cors from "cors";
 import dotenv from "dotenv";
-import connectDB from "./db";
+import express from "express";
+import helmet from "helmet";
+
+import authRouter from "./routes/auth-router";
+import { authenticate } from "./middlewares/auth-middlewares";
+import connectDB from "./connections/database";
+import { errorHandler } from "./middlewares/error-handler";
+import userRouter from "./routes/user-router";
+
+const app = express();
+const port = process.env.PORT || 8000;
 
 dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+export interface UserBasicInfo {
+  _id: string;
+  name: string;
+  email: string;
+}
 
-// Middleware
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserBasicInfo | null;
+    }
+  }
+}
+
+// NOTE: Use this only if you are deploying
+// and if you wanna make this acccessible via frontend.
+// app.use(
+//   cors({
+//     origin: process.env.CLIENT_URL,
+//     credentials: true,
+//   })
+// );
+
+app.use(helmet());
 app.use(express.json());
+app.use(authRouter);
+app.use(cookieParser());
+app.use("/users", authenticate, userRouter);
+app.use(errorHandler);
 
-// Connect to the database
 connectDB();
 
-// Sample route
-app.get("/", (req, res) => {
-  res.send("Server is running!");
-});
-
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
